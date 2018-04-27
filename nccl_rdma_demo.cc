@@ -79,8 +79,8 @@ int main(int argc, char** argv) {
   int gpu_count = 4;
   ncclComm_t comms[gpu_count];  // 4 GPU
   int devlist[4] = {0,1,2,3};
-  float** sendbuff = (float**)malloc(nDev * sizeof(float*));
-  float** recvbuff = (float**)malloc(nDev * sizeof(float*));
+  float** sendbuff = (float**)malloc(gpu_count * sizeof(float*));
+  float** recvbuff = (float**)malloc(gpu_count * sizeof(float*));
   cudaStream_t* s = (cudaStream_t*)malloc(sizeof(cudaStream_t)*gpu_count);
 
   // alloc GPU memory and set sendbuff to value 1.
