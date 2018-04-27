@@ -1,5 +1,6 @@
 #include <sstream>
 #include <cassert>
+#include <stdio.h>
 
 #include "nccl.h"
 #include "redis_client.h"
@@ -43,7 +44,7 @@ void InitMemory(int gpu_count, int node_id, int size,
                 float** sendbuff, float** recvbuff,
                 cudaStream_t* s) {
   for (int i = 0; i < gpu_count; ++i) {
-    CUDACHECK(cudaSetDevice(node_id * gpu_count + i));
+    CUDACHECK(cudaSetDevice(i));
     CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
     CUDACHECK(cudaMalloc(recvbuff + i, size * sizeof(float)));
     CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
@@ -87,11 +88,14 @@ int main(int argc, char** argv) {
   InitMemory(gpu_count, node_id, 4096, sendbuff, recvbuff, s);
 
   for (int i = 0; i < gpu_count; ++i) {
-    std::cout << "initializing rank: " << node_id * 4 + i << std::endl;
-    cudaSetDevice(node_id * gpu_count + i);
-    ncclCommInitRank(comms, node_count * gpu_count, nccl_id, node_id * gpu_count + i);
+    std::cout << "initializing gpu: " << i
+              << " rank: " << node_id * gpu_count + i  << std::endl;
+    CUDACHECK(cudaSetDevice(i));
+    std::cout << "set device end..." << std::endl;
+    NCCLCHECK(ncclCommInitRank(comms+i, node_count * gpu_count, nccl_id, node_id * gpu_count + i));
   }
 
+  std::cout << "start allreduce call..." << std::endl;
   // do allreduce
    NCCLCHECK(ncclGroupStart());
   for (int i = 0; i < gpu_count; i++)
@@ -99,6 +103,7 @@ int main(int argc, char** argv) {
            4096, ncclFloat, ncclSum,
            comms[i], s[i]));
   NCCLCHECK(ncclGroupEnd());
+  std::cout << "end allreduce call..." << std::endl;
 
   for (int i = 0; i < gpu_count; i++) {
     ncclCommDestroy(comms[i]);

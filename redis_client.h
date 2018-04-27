@@ -70,7 +70,6 @@ ncclUniqueId GetClusterId(int node_count) {
       redisCommand(ctx_, "GET %s", id_key_.c_str()));
 
     if (reply->type == REDIS_REPLY_STRING) {
-      ncclUniqueId id;
       if (reply->len != NCCL_UNIQUE_ID_BYTES) {
         std::cerr << "redis reply uniq id data error" << std::endl;
         exit(1);
