@@ -87,21 +87,24 @@ int main(int argc, char** argv) {
   // alloc GPU memory and set sendbuff to value 1.
   InitMemory(gpu_count, node_id, 4096, sendbuff, recvbuff, s);
 
+  NCCLCHECK(ncclGroupStart());
   for (int i = 0; i < gpu_count; ++i) {
-    std::cout << "initializing gpu: " << i
-              << " rank: " << node_id * gpu_count + i  << std::endl;
+    int rank = node_id * gpu_count + i;
+    int nranks = node_count * gpu_count;
     CUDACHECK(cudaSetDevice(i));
-    std::cout << "set device end..." << std::endl;
-    NCCLCHECK(ncclCommInitRank(comms+i, node_count * gpu_count, nccl_id, node_id * gpu_count + i));
+    std::cout << "set gpu " << i << " rank " << rank
+              << " nranks " << nranks << std::endl;
+    NCCLCHECK(ncclCommInitRank(comms+i, nranks, nccl_id, rank));
   }
+  NCCLCHECK(ncclGroupEnd());
 
-  std::cout << "start allreduce call..." << std::endl;
   // do allreduce
-   NCCLCHECK(ncclGroupStart());
+  std::cout << "start allreduce call..." << std::endl;  
+  NCCLCHECK(ncclGroupStart());
   for (int i = 0; i < gpu_count; i++)
-     NCCLCHECK(ncclAllReduce((const void*)sendbuff[i], (void*)recvbuff[i],
-           4096, ncclFloat, ncclSum,
-           comms[i], s[i]));
+    NCCLCHECK(ncclAllReduce((const void*)sendbuff[i], (void*)recvbuff[i],
+        4096, ncclFloat, ncclSum,
+        comms[i], s[i]));
   NCCLCHECK(ncclGroupEnd());
   std::cout << "end allreduce call..." << std::endl;
 
